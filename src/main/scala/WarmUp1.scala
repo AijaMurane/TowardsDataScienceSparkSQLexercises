@@ -37,24 +37,19 @@ object WarmUp1 extends App {
 
   println(s"$productsSoldOnceCount products have been sold at least once.")
 
-  spark.sql("SELECT * FROM sales_view").show()
-
   /* Which is the product contained in more orders?*/
   productsDF.createOrReplaceTempView("products_view")
-  spark.sql("SELECT * FROM products_view").show()
 
-
-  val productsSoldMostDF = spark.sql("SELECT COUNT(sales_view.product_id) AS product_id_count, products_view.product_name " +
+  val productsSoldMostDF = spark.sql("SELECT product_name " +
+    "FROM products_view " +
+    "WHERE product_id = (" +
+    "SELECT COUNT(sales_view.product_id) AS product_id_count " +
     "FROM sales_view " +
-    "JOIN products_view " +
-    "ON sales_view.product_id = products_view.product_id " +
-    "ORDER BY sales_view.product_id " +
-    "GROUP BY sales_view.product_id")
+    "GROUP BY sales_view.product_id " +
+    "ORDER BY product_id_count DESC " +
+    "LIMIT 1)")
 
-  productsSoldMostDF.show()
-
-
-  //val mostSoldProduct = productsSoldMostDF.select(col("product_id")).first().toString().stripPrefix("[").stripSuffix("]")
-  //println(s"Most sold product id was $mostSoldProduct")
+  val mostSoldProduct = productsSoldMostDF.select(col("product_name")).first().toString().stripPrefix("[").stripSuffix("]")
+  println(s"Most sold product id was $mostSoldProduct")
 
 }

@@ -1,3 +1,7 @@
+/* Full exercise: https://towardsdatascience.com/six-spark-exercises-to-rule-them-all-242445b24565
+* Results are the same as in solutions.
+*/
+
 import org.apache.spark.sql.SparkSession
 
 object WarmUp2 extends App {
@@ -25,5 +29,4 @@ object WarmUp2 extends App {
     "GROUP BY date")
 
   distinctProductsSoldDF.show()
-
 }

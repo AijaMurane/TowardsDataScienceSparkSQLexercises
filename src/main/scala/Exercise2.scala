@@ -1,3 +1,7 @@
+/* Full exercise: https://towardsdatascience.com/six-spark-exercises-to-rule-them-all-242445b24565
+*/
+
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, avg}
 
@@ -22,7 +26,6 @@ object Exercise2 extends App {
   Order 1: 10/105 = 0.04
   Order 2: 8/105 = 0.032
   Order 3: 7/105 = 0.028
-  TODO understand why there is 105 if quota is 250
 
   Average % Contribution = (0.04+0.032+0.028)/3 = 0.03333 */
 

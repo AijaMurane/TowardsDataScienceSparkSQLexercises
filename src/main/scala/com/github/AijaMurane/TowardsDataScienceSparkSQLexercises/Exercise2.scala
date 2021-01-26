@@ -1,9 +1,6 @@
-/* Full exercise: https://towardsdatascience.com/six-spark-exercises-to-rule-them-all-242445b24565
-*/
-
+package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, avg}
 
 object Exercise2 extends App {
   val spark = SparkSession.builder

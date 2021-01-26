@@ -1,6 +1,8 @@
-/* Full exercise: https://towardsdatascience.com/six-spark-exercises-to-rule-them-all-242445b24565
+/* Exercises: https://towardsdatascience.com/six-spark-exercises-to-rule-them-all-242445b24565
 * Results are the same as in solutions.
-*/
+* */
+
+package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
 
 import org.apache.spark.sql.SparkSession
 

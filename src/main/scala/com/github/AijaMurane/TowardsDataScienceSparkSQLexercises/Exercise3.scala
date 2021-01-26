@@ -1,7 +1,8 @@
+package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
+
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.dsl.expressions.{DslExpression, StringToAttributeConversionHelper}
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{col, dense_rank, desc, max}
+import org.apache.spark.sql.functions.{col, dense_rank}
 
 object Exercise3 extends App {
   val spark = SparkSession.builder

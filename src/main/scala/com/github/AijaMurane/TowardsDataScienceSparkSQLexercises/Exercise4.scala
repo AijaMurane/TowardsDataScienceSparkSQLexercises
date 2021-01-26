@@ -1,3 +1,5 @@
+package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
+
 import org.apache.spark.sql.SparkSession
 
 object Exercise4 extends App {
@@ -11,9 +13,6 @@ object Exercise4 extends App {
   spark.sparkContext.setLogLevel("ERROR")
 
   val salesDF = spark.read.format("parquet").load("./src/resources/sales_parquet")
-
-
-
 
 
 }

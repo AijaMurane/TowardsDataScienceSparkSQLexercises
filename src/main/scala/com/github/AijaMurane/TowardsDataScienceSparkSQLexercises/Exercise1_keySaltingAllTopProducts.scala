@@ -7,8 +7,9 @@
 package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{array, avg, col, concat, explode, floor, lit, monotonically_increasing_id, rand}
+import org.apache.spark.sql.functions.{array, avg, broadcast, col, concat, explode, floor, lit, monotonically_increasing_id, rand, round, when}
 import org.apache.spark.SparkConf
+import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.collection.mutable.ArrayBuffer
@@ -51,33 +52,39 @@ object Exercise1_keySaltingAllTopProducts extends App {
     .select("product_id")
     .collect
     .map(_.toString())
+    .map(_.replaceAll("\\[|]", ""))
 
   val REPLICATION_FACTOR = 101
-  var l = collection.mutable.Seq[(String, Int)]()
+  var l : List[(String,Int)] = List()
   for ( r <- 0 to 99) {
-    for ( i <- 0 to 100)
-      l :+ (replicated_products(r), i)
+    for ( i <- 0 to 100) {
+      l = l:+((replicated_products(r),i))
+    }
   }
 
-  l.foreach(println)
+  import spark.implicits._
 
-  //val rdd = spark.sparkContext.parallelize()
+  val rdd = spark.sparkContext.parallelize(l)
+  val columns = Seq("product_id","replication")
+  val replicated_df = spark.createDataFrame(rdd).toDF(columns:_*)
 
-  //val rdd = spark.sparkContext.parallelize(l)
+  //productsDFnew is correct
+  val productsDFnew = productsDF
+    .join(broadcast(replicated_df), productsDF.col("product_id") <=> replicated_df.col("product_id"), "left")
+    .withColumn("salted_join_key", when(replicated_df("replication").isNull, productsDF("product_id"))
+      .otherwise(concat(replicated_df("product_id"), lit("-"), replicated_df("replication"))))
 
-  /*
-  val REPLICATION_FACTOR = 101
-  val l = ArrayBuffer[String]()
-  val replicated_products = ArrayBuffer[String]()
-  for (r <- 0 to results) replicated_products.append(_r["product_id"])
-  for _rep in range(0, REPLICATION_FACTOR):
-    l.append((_r["product_id"], _rep))
-  rdd = spark.sparkContext.parallelize(l)
-  replicated_df = rdd.map(lambda x: Row(product_id=x[0], replication=int(x[1])))
-  replicated_df = spark.createDataFrame(replicated_df)
-*/
+  val salesDFnew = salesDF
+    .withColumn("salted_join_key", when(salesDF.col("product_id").isin(replicated_products:_*),
+    concat(salesDF.col("product_id"), lit("-"),
+      round(rand() * (REPLICATION_FACTOR - 1), 0).cast(
+        IntegerType)))
+      .otherwise(salesDF.col("product_id")))
 
-
+  salesDFnew
+    .join(productsDFnew, salesDFnew.col("salted_join_key") <=> productsDFnew.col("salted_join_key"),"inner")
+    .agg(avg(productsDFnew("price") * salesDFnew("num_pieces_sold")))
+    .show()
 
   val t1t0KS = System.nanoTime()
   println("Elapsed time: " + (t1t0KS - t0KS) / 10e8 + "s")

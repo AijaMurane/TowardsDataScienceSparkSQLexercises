@@ -4,8 +4,9 @@
 package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{avg, broadcast}
 
-object Exercise2 extends App {
+object Exercise2_sparkFunctions {
   val spark = SparkSession.builder
     .master("local")
     .config("spark.sql.autoBroadcastJoinThreshold", -1)
@@ -28,23 +29,17 @@ object Exercise2 extends App {
   Order 3: 7/105 = 0.028
 
   Average % Contribution = (0.04+0.032+0.028)/3 = 0.03333 */
+
   val t0KS = System.nanoTime()
 
   val salesDF = spark.read.format("parquet").load("./src/resources/sales_parquet")
   val sellersDF = spark.read.format("parquet").load("./src/resources/sellers_parquet")
 
-  salesDF.createOrReplaceTempView("sales_view")
-  sellersDF.createOrReplaceTempView("sellers_view")
-
-  val contributionsDF = spark.sql("SELECT sales_view.order_id, sales_view.seller_id, (sales_view.num_pieces_sold / sellers_view.daily_target) AS contribution_to_daily_target " +
-    "FROM sales_view " +
-    "JOIN sellers_view " +
-    "WHERE sales_view.seller_id = sellers_view.seller_id")
-
-  contributionsDF
-    .groupBy("seller_id")
-    .avg("contribution_to_daily_target").alias("avg%contribution")
-    .orderBy("seller_id")
+  salesDF
+    .join(broadcast(sellersDF), salesDF("seller_id") <=> sellersDF("sellers_id"), "inner")
+    .withColumn("ratio", salesDF("num_pieces_sold")/sellersDF("daily_target"))
+    .groupBy(salesDF("seller_id"))
+    .agg(avg("ratio"))
     .show()
 
   val t1t0KS = System.nanoTime()

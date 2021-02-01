@@ -4,7 +4,7 @@
 * Another explanation about key salting: https://www.youtube.com/watch?v=d41_X78ojCg
 * Key salting code: https://github.com/gjeevanm/SparkDataSkewness/blob/master/src/main/scala/com/gjeevan/DataSkew/RemoveDataSkew.scala
 * Here is my solution using SQL query. This solution takes longer time than with key salting.
-* Elapsed time: 125.5228673s
+* Elapsed time usually between 120-130s.
 * */
 
 

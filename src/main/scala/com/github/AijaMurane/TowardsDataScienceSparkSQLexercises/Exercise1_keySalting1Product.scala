@@ -1,7 +1,6 @@
 /* Exercises: https://towardsdatascience.com/six-spark-exercises-to-rule-them-all-242445b24565
 * Key salting is suggested: https://towardsdatascience.com/the-art-of-joining-in-spark-dcbd33d693c
 * Another explanation about key salting: https://www.youtube.com/watch?v=d41_X78ojCg
-* Key salting code: https://github.com/gjeevanm/SparkDataSkewness/blob/master/src/main/scala/com/gjeevan/DataSkew/RemoveDataSkew.scala
 * */
 
 /* Here I try key salting only for product_id = 0 */
@@ -9,10 +8,8 @@
 package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{array, avg, col, concat, explode, floor, lit, monotonically_increasing_id, rand}
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.sql.functions.{avg, broadcast, col, concat, lit, rand, round, when}
+import org.apache.spark.sql.types.IntegerType
 
 object Exercise1_keySalting1Product extends App {
 
@@ -38,27 +35,50 @@ object Exercise1_keySalting1Product extends App {
     .read
     .format("parquet")
     .load("./src/resources/sales_parquet")
-    .selectExpr("order_id", "product_id", "cast(num_pieces_sold as integer)")
+    .selectExpr("order_id", "cast(product_id as string)", "cast(num_pieces_sold as integer)")
 
   val t0KS = System.nanoTime()
 
-  val nSaltBins = 100
+  val results = salesDF
+    .groupBy("product_id")
+    .count()
+    .orderBy(col("count").desc)
+    .limit(1)
 
-  val salesDFkeySalted = salesDF
-      .where(col("product_id") === "0")
-      .withColumn("product_id", concat(
-          salesDF.col("product_id"), lit("_"), lit(floor(rand * nSaltBins))))
-    val productsDFkeySalted = productsDF
-      .where(col("product_id") === "0")
-      .withColumn("explodedCol",
-        explode(
-          array((0 to nSaltBins).map(lit(_)): _ *)
-        ))
+  val replicated_products = results
+    .select("product_id")
+    .collect
+    .map(_.toString())
+    .map(_.replaceAll("\\[|]", ""))
+    .head
 
-  salesDFkeySalted
-    .join(productsDFkeySalted, salesDFkeySalted.col("product_id")<=> concat(productsDFkeySalted.col("product_id"),lit("_"),productsDFkeySalted.col("explodedCol")))
-    .selectExpr("price*num_pieces_sold AS revenue")
-    .select(avg("revenue")) //FIXME the average value is not correct. Probably problem with salting keys for 1 product.
+  val REPLICATION_FACTOR = 101
+  var l : List[(String,Int)] = List()
+  for ( i <- 0 to 100) {
+      l = l:+((replicated_products,i))
+    }
+
+  //import spark.implicits._
+
+  val rdd = spark.sparkContext.parallelize(l)
+  val columns = Seq("product_id","replication")
+  val replicated_df = spark.createDataFrame(rdd).toDF(columns:_*)
+
+  val productsDFnew = productsDF
+    .join(broadcast(replicated_df), productsDF.col("product_id") <=> replicated_df.col("product_id"), "left")
+    .withColumn("salted_join_key", when(replicated_df("replication").isNull, productsDF("product_id"))
+      .otherwise(concat(replicated_df("product_id"), lit("-"), replicated_df("replication"))))
+
+  val salesDFnew = salesDF
+    .withColumn("salted_join_key", when(salesDF.col("product_id").isin(replicated_products:_*),
+      concat(salesDF.col("product_id"), lit("-"),
+        round(rand() * (REPLICATION_FACTOR - 1), 0).cast(
+          IntegerType)))
+      .otherwise(salesDF.col("product_id")))
+
+  salesDFnew
+    .join(productsDFnew, salesDFnew.col("salted_join_key") <=> productsDFnew.col("salted_join_key"),"inner")
+    .agg(avg(productsDFnew("price") * salesDFnew("num_pieces_sold")))
     .show()
 
   val t1t0KS = System.nanoTime()

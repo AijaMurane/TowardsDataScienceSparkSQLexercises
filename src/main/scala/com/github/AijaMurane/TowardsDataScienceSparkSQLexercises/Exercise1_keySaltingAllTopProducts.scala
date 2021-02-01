@@ -2,17 +2,14 @@
 * Results are the same as in solutions.
 * Key salting is suggested: https://towardsdatascience.com/the-art-of-joining-in-spark-dcbd33d693c
 * Here I rewrote the solution in Scala.
+* Elapsed time usually between 260-280s.
 * */
 
 package com.github.AijaMurane.TowardsDataScienceSparkSQLexercises
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{array, avg, broadcast, col, concat, explode, floor, lit, monotonically_increasing_id, rand, round, when}
-import org.apache.spark.SparkConf
+import org.apache.spark.sql.functions.{avg, broadcast, col, concat, lit, rand, round, when}
 import org.apache.spark.sql.types.IntegerType
-import org.apache.spark.sql.{DataFrame, SparkSession}
-
-import scala.collection.mutable.ArrayBuffer
 
 object Exercise1_keySaltingAllTopProducts extends App {
   val spark = SparkSession.builder
@@ -26,7 +23,6 @@ object Exercise1_keySaltingAllTopProducts extends App {
 
   /* What is the average revenue of the orders? */
   /* From exercise description: Each row in this table is an order and every order can contain only one product.*/
-
 
   val productsDF = spark
     .read
@@ -62,13 +58,12 @@ object Exercise1_keySaltingAllTopProducts extends App {
     }
   }
 
-  import spark.implicits._
+  //import spark.implicits._
 
   val rdd = spark.sparkContext.parallelize(l)
   val columns = Seq("product_id","replication")
   val replicated_df = spark.createDataFrame(rdd).toDF(columns:_*)
 
-  //productsDFnew is correct
   val productsDFnew = productsDF
     .join(broadcast(replicated_df), productsDF.col("product_id") <=> replicated_df.col("product_id"), "left")
     .withColumn("salted_join_key", when(replicated_df("replication").isNull, productsDF("product_id"))
